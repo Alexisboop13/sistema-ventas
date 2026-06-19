@@ -1,45 +1,93 @@
 ﻿const express = require('express');
 const Database = require('better-sqlite3');
+
 const app = express();
 const db = new Database('ventas.db');
 
-app.get('/', (req, res) => {
-  const ventas = db.prepare('SELECT * FROM ventas').all();
-
-  const filas = ventas.map(v => `
-    <tr>
-      <td>${v.producto}</td>
-      <td>${v.cantidad}</td>
-      <td>$${v.precio}</td>
-      <td>${v.fecha}</td>
-    </tr>
-  `).join('');
-
-  res.send(`
-    <html>
-      <head>
-        <meta charset="UTF-8">
-        <title>Ventas del dia</title>
-        <style>
-          body { font-family: sans-serif; padding: 2rem; }
-          table { border-collapse: collapse; width: 100%; }
-          th, td { border: 1px solid #ccc; padding: 8px 12px; text-align: left; }
-          th { background: #f4f4f4; }
-        </style>
-      </head>
-      <body>
-        <h1>Ventas del dia</h1>
-        <table>
-          <tr>
-            <th>Producto</th><th>Cantidad</th><th>Precio</th><th>Fecha</th>
-          </tr>
-          ${filas}
-        </table>
-      </body>
-    </html>
-  `);
+app.use(express.json());
+app.get('/api/ventas', (req, res) => {
+  try {
+    const ventas = db.prepare('SELECT * FROM ventas ORDER BY id DESC').all();
+    res.json(ventas);
+  } catch (error) {
+    res.status(500).json({ error: 'Error al obtener las ventas' });
+  }
 });
-
-app.listen(3000, () => {
-  console.log('Servidor corriendo en http://localhost:3000');
+app.get('/api/ventas/:id', (req, res) => {
+  try {
+    const id = req.params.id;
+    const venta = db.prepare('SELECT * FROM ventas WHERE id = ?').get(id);
+    if (!venta) {
+      return res.status(404).json({ error: 'Venta no encontrada' });
+    }
+    res.json(venta);
+  } catch (error) {
+    res.status(500).json({ error: 'Error al obtener la venta' });
+  }
+});
+app.post('/api/ventas', (req, res) => {
+  try {
+    const { producto, cantidad, precio, fecha } = req.body;
+    if (!producto || !cantidad || !precio || !fecha) {
+      return res.status(400).json({
+        error: 'Faltan campos: producto, cantidad, precio y fecha son requeridos'
+      });
+    }
+    const insert = db.prepare('INSERT INTO ventas (producto, cantidad, precio, fecha) VALUES (?, ?, ?, ?)');
+    const result = insert.run(producto, cantidad, precio, fecha);
+    res.status(201).json({
+      mensaje: 'Venta creada exitosamente',
+      id: result.lastInsertRowid
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Error al crear la venta' });
+  }
+});
+app.put('/api/ventas/:id', (req, res) => {
+  try {
+    const id = req.params.id;
+    const { producto, cantidad, precio, fecha } = req.body;
+    const existe = db.prepare('SELECT id FROM ventas WHERE id = ?').get(id);
+    if (!existe) {
+      return res.status(404).json({ error: 'Venta no encontrada' });
+    }
+    if (!producto || !cantidad || !precio || !fecha) {
+      return res.status(400).json({
+        error: 'Faltan campos: producto, cantidad, precio y fecha son requeridos'
+      });
+    }
+    const update = db.prepare('UPDATE ventas SET producto = ?, cantidad = ?, precio = ?, fecha = ? WHERE id = ?');
+    update.run(producto, cantidad, precio, fecha, id);
+    res.json({ mensaje: 'Venta actualizada exitosamente' });
+  } catch (error) {
+    res.status(500).json({ error: 'Error al actualizar la venta' });
+  }
+});
+app.delete('/api/ventas/:id', (req, res) => {
+  try {
+    const id = req.params.id;
+    const existe = db.prepare('SELECT id FROM ventas WHERE id = ?').get(id);
+    if (!existe) {
+      return res.status(404).json({ error: 'Venta no encontrada' });
+    }
+    const deleteVenta = db.prepare('DELETE FROM ventas WHERE id = ?');
+    deleteVenta.run(id);
+    res.json({ mensaje: 'Venta eliminada exitosamente' });
+  } catch (error) {
+    res.status(500).json({ error: 'Error al eliminar la venta' });
+  }
+});
+app.get('/', (req, res) => {
+  const ventas = db.prepare('SELECT * FROM ventas ORDER BY id DESC').all();
+  let filas = '';
+  for (let i = 0; i < ventas.length; i++) {
+    const v = ventas[i];
+    filas += '<tr><td>' + v.producto + '</td><td>' + v.cantidad + '</td><td>$' + v.precio + '</td><td>' + v.fecha + '</td></tr>';
+  }
+  res.send('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Ventas del dia</title><style>body{font-family:sans-serif;padding:2rem;}table{border-collapse:collapse;width:100%;}th,td{border:1px solid #ccc;padding:8px 12px;text-align:left;}th{background:#f4f4f4;}</style></head><body><h1>Ventas del dia</h1><table><tr><th>Producto</th><th>Cantidad</th><th>Precio</th><th>Fecha</th></tr>' + filas + '</table></body></html>');
+});
+const PORT = 3000;
+app.listen(PORT, () => {
+  console.log('Servidor corriendo en http://localhost:' + PORT);
+  console.log('API de ventas en http://localhost:' + PORT + '/api/ventas');
 });
