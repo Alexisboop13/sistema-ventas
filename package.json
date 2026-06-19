@@ -12,6 +12,7 @@
   "type": "commonjs",
   "dependencies": {
     "better-sqlite3": "^12.11.1",
+    "exceljs": "^4.4.0",
     "express": "^5.2.1"
   }
 }

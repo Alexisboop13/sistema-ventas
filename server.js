@@ -5,6 +5,12 @@ const app = express();
 const db = new Database('ventas.db');
 
 app.use(express.json());
+
+// ==========================================
+// ENDPOINTS DE LA API (ORDEN CORRECTO)
+// ==========================================
+
+// 1. GET /api/ventas - Obtener todas las ventas
 app.get('/api/ventas', (req, res) => {
   try {
     const ventas = db.prepare('SELECT * FROM ventas ORDER BY id DESC').all();
@@ -13,6 +19,44 @@ app.get('/api/ventas', (req, res) => {
     res.status(500).json({ error: 'Error al obtener las ventas' });
   }
 });
+
+// 2. GET /api/ventas/export - Exportar a Excel (DEBE IR ANTES DEL /:id)
+app.get('/api/ventas/export', (req, res) => {
+  try {
+    const ExcelJS = require('exceljs');
+    const ventas = db.prepare('SELECT * FROM ventas ORDER BY id DESC').all();
+
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Ventas');
+
+    worksheet.columns = [
+      { header: 'ID', key: 'id', width: 10 },
+      { header: 'Producto', key: 'producto', width: 30 },
+      { header: 'Cantidad', key: 'cantidad', width: 15 },
+      { header: 'Precio', key: 'precio', width: 15 },
+      { header: 'Fecha', key: 'fecha', width: 20 }
+    ];
+
+    ventas.forEach(v => {
+      worksheet.addRow(v);
+    });
+
+    worksheet.getRow(1).font = { bold: true };
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', 'attachment; filename=ventas.xlsx');
+
+    workbook.xlsx.write(res).then(() => {
+      res.end();
+    });
+
+  } catch (error) {
+    console.error('Error al exportar:', error);
+    res.status(500).json({ error: 'Error al generar el archivo Excel' });
+  }
+});
+
+// 3. GET /api/ventas/:id - Obtener una venta por ID (DEBE IR DESPUÉS DEL /export)
 app.get('/api/ventas/:id', (req, res) => {
   try {
     const id = req.params.id;
@@ -25,6 +69,8 @@ app.get('/api/ventas/:id', (req, res) => {
     res.status(500).json({ error: 'Error al obtener la venta' });
   }
 });
+
+// 4. POST /api/ventas - Crear una nueva venta
 app.post('/api/ventas', (req, res) => {
   try {
     const { producto, cantidad, precio, fecha } = req.body;
@@ -43,6 +89,8 @@ app.post('/api/ventas', (req, res) => {
     res.status(500).json({ error: 'Error al crear la venta' });
   }
 });
+
+// 5. PUT /api/ventas/:id - Actualizar una venta existente
 app.put('/api/ventas/:id', (req, res) => {
   try {
     const id = req.params.id;
@@ -63,6 +111,8 @@ app.put('/api/ventas/:id', (req, res) => {
     res.status(500).json({ error: 'Error al actualizar la venta' });
   }
 });
+
+// 6. DELETE /api/ventas/:id - Eliminar una venta
 app.delete('/api/ventas/:id', (req, res) => {
   try {
     const id = req.params.id;
@@ -77,6 +127,10 @@ app.delete('/api/ventas/:id', (req, res) => {
     res.status(500).json({ error: 'Error al eliminar la venta' });
   }
 });
+
+// ==========================================
+// FRONTEND
+// ==========================================
 app.get('/', (req, res) => {
   const ventas = db.prepare('SELECT * FROM ventas ORDER BY id DESC').all();
   let filas = '';
@@ -86,8 +140,13 @@ app.get('/', (req, res) => {
   }
   res.send('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Ventas del dia</title><style>body{font-family:sans-serif;padding:2rem;}table{border-collapse:collapse;width:100%;}th,td{border:1px solid #ccc;padding:8px 12px;text-align:left;}th{background:#f4f4f4;}</style></head><body><h1>Ventas del dia</h1><table><tr><th>Producto</th><th>Cantidad</th><th>Precio</th><th>Fecha</th></tr>' + filas + '</table></body></html>');
 });
+
+// ==========================================
+// INICIAR SERVIDOR
+// ==========================================
 const PORT = 3000;
 app.listen(PORT, () => {
   console.log('Servidor corriendo en http://localhost:' + PORT);
   console.log('API de ventas en http://localhost:' + PORT + '/api/ventas');
+  console.log('Exportar a Excel: http://localhost:' + PORT + '/api/ventas/export');
 });
