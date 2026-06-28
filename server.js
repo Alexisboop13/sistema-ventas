@@ -1,4 +1,4 @@
-﻿const express = require('express');
+const express = require('express');
 const Database = require('better-sqlite3');
 
 const app = express();
@@ -141,12 +141,39 @@ app.get('/', (req, res) => {
   res.send('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Ventas del dia</title><style>body{font-family:sans-serif;padding:2rem;}table{border-collapse:collapse;width:100%;}th,td{border:1px solid #ccc;padding:8px 12px;text-align:left;}th{background:#f4f4f4;}</style></head><body><h1>Ventas del dia</h1><table><tr><th>Producto</th><th>Cantidad</th><th>Precio</th><th>Fecha</th></tr>' + filas + '</table></body></html>');
 });
 
+
 // ==========================================
-// INICIAR SERVIDOR
+// WEBSOCKET — SENSOR EN TIEMPO REAL
 // ==========================================
+const { WebSocketServer } = require('ws');
+const http = require('http');
+
+const server = http.createServer(app);
+const wss = new WebSocketServer({ server });
+
+wss.on('connection', (socket) => {
+  console.log('Cliente conectado por WebSocket');
+
+  socket.send(JSON.stringify({ tipo: 'saludo', mensaje: 'Conectado al sensor' }));
+
+  const intervalo = setInterval(() => {
+    const dato = {
+      tipo: 'sensor',
+      valor: Math.floor(Math.random() * 100),
+      timestamp: new Date().toISOString()
+    };
+    socket.send(JSON.stringify(dato));
+  }, 1000);
+
+  socket.on('close', () => {
+    clearInterval(intervalo);
+    console.log('Cliente desconectado');
+  });
+});
+
 const PORT = 3000;
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log('Servidor corriendo en http://localhost:' + PORT);
   console.log('API de ventas en http://localhost:' + PORT + '/api/ventas');
-  console.log('Exportar a Excel: http://localhost:' + PORT + '/api/ventas/export');
+  console.log('WebSocket activo en ws://localhost:' + PORT);
 });

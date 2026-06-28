@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Sensor en vivo</title>
+  <style>
+    body { font-family: sans-serif; padding: 2rem; background: #f4f4f4; }
+    h1 { color: #333; }
+    #log { background: #1e1e1e; color: #00ff88; padding: 1rem; border-radius: 8px; height: 300px; overflow-y: auto; font-family: monospace; font-size: 14px; }
+    .dato { margin: 4px 0; }
+  </style>
+</head>
+<body>
+  <h1>Sensor en tiempo real</h1>
+  <p id="estado">Conectando...</p>
+  <div id="log"></div>
+  <script>
+    const ws = new WebSocket('ws://localhost:3000');
+    const log = document.getElementById('log');
+    const estado = document.getElementById('estado');
+    ws.onopen = () => { estado.textContent = 'Conectado al sensor'; estado.style.color = 'green'; };
+    ws.onmessage = (event) => {
+      const dato = JSON.parse(event.data);
+      const linea = document.createElement('div');
+      linea.className = 'dato';
+      linea.textContent = dato.timestamp + ' → valor: ' + dato.valor;
+      log.prepend(linea);
+    };
+    ws.onclose = () => { estado.textContent = 'Desconectado'; estado.style.color = 'red'; };
+  </script>
+</body>
+</html>
