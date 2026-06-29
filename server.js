@@ -2,6 +2,8 @@ const express = require('express');
 const Database = require('better-sqlite3');
 
 const app = express();
+const cors = require('cors');
+app.use(cors());
 const db = new Database('ventas.db');
 
 app.use(express.json());
@@ -55,7 +57,26 @@ app.get('/api/ventas/export', (req, res) => {
     res.status(500).json({ error: 'Error al generar el archivo Excel' });
   }
 });
+// GET /api/ventas/pdf - Exportar a PDF
+app.get('/api/ventas/pdf', (req, res) => {
+  const PDFDocument = require('pdfkit')
+  const ventas = db.prepare('SELECT * FROM ventas ORDER BY id DESC').all()
 
+  const doc = new PDFDocument()
+  res.setHeader('Content-Type', 'application/pdf')
+  res.setHeader('Content-Disposition', 'attachment; filename=ventas.pdf')
+  doc.pipe(res)
+
+  doc.fontSize(20).text('Reporte de Ventas', { align: 'center' })
+  doc.moveDown()
+
+  ventas.forEach(v => {
+    doc.fontSize(12).text(`${v.producto} — Cantidad: ${v.cantidad} — $${v.precio} — ${v.fecha}`)
+    doc.moveDown(0.5)
+  })
+
+  doc.end()
+})
 // 3. GET /api/ventas/:id - Obtener una venta por ID (DEBE IR DESPUÉS DEL /export)
 app.get('/api/ventas/:id', (req, res) => {
   try {

@@ -12,8 +12,10 @@
   "type": "commonjs",
   "dependencies": {
     "better-sqlite3": "^12.11.1",
+    "cors": "^2.8.6",
     "exceljs": "^4.4.0",
     "express": "^5.2.1",
+    "pdfkit": "^0.19.1",
     "ws": "^8.21.0"
   }
 }
