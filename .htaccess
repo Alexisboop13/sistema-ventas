@@ -1,0 +1,6 @@
+# Redirige todo el tráfico a Node.js en puerto 3000
+# En producción: cambiar localhost:3000 por la IP del servidor
+
+RewriteEngine On
+RewriteRule ^$ http://localhost:3000/ [P,L]
+RewriteRule ^(.*)$ http://localhost:3000/$1 [P,L]
